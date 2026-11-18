@@ -112,6 +112,8 @@ iso20_fragments = [
     'SignedInstallationData',
     'MeteringConfirmationReq',
     'AbsolutePriceSchedule',
+    'SignedMeteringData',
+    'PriceLevelSchedule',
 ]
 iso20_ac_fragments = [
     'SignedInfo',
