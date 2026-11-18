@@ -774,7 +774,10 @@ class ExiDecoderCode(ExiBaseCoderCode):
             log_write_error(f'No root elements in analyzer data. Main function {fn_name} is not generated.')
         elif len(self.analyzer_data.root_elements) > 1:
             decode_fn = []
-            for elem in self.analyzer_data.root_elements:
+            # EXI 1.0, 8.5.1: the global elements are sorted by local name, then by namespace
+            root_elements = sorted(self.analyzer_data.root_elements,
+                                   key=lambda elem: (elem.name_short, tools.extract_namespace_uri(elem.name)))
+            for elem in root_elements:
                 if self.__is_iso20:
                     # TODO: The following if filters the simple types DigestValue, MgmtData and KeyName.
                     #       Simple types has to be decoded directly and not with an decoding function.
@@ -794,8 +797,6 @@ class ExiDecoderCode(ExiBaseCoderCode):
                     else:
                         decode_fn.append([CONFIG_PARAMS['decode_function_prefix'] + elem.prefixed_type,
                                           parameter_name + '->' + elem.typename])
-
-            decode_fn.sort()
 
             bits = tools.get_bits_to_decode(len(self.analyzer_data.root_elements))
 
