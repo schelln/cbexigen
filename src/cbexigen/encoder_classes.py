@@ -957,11 +957,13 @@ class ExiEncoderCode(ExiBaseCoderCode):
 
         encode_fn = []
         for fragment in self.analyzer_data.known_fragments.values():
-            if 'xmldsig' in fragment.namespace.casefold() and fragment.is_complex:
+            if 'xmldsig' in fragment.namespace.casefold():
+                # Every xmldsig element takes an event code, coded or not, so that
+                # the codes and their width match the decoder.
                 fragment_type = fragment.name if fragment.type == 'AnonType' else fragment.type
-                owner_prefix = (CONFIG_PARAMS['shared_namespace_prefixes'].get(
-                    fragment.namespace, self.__schema_prefix) if self.__is_iso20 else self.__schema_prefix)
-                if fragment_type in self.analyzer_data.known_elements.values():
+                if fragment.is_complex and fragment_type in self.analyzer_data.known_elements.values():
+                    owner_prefix = (CONFIG_PARAMS['shared_namespace_prefixes'].get(
+                        fragment.namespace, self.__schema_prefix) if self.__is_iso20 else self.__schema_prefix)
                     function = f'{CONFIG_PARAMS["encode_function_prefix"]}{owner_prefix}{fragment_type}'
                     parameter = f'{parameter_name}->{fragment.name}'
                     encode_fn.append([fragment.name, fragment.namespace, function, parameter])
