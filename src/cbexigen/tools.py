@@ -83,6 +83,18 @@ def extract_namespace_uri(qualified_name: str) -> str:
     return ''
 
 
+def is_fragment_type_generated(fragment, fragment_type, known_elements, is_iso20) -> bool:
+    """True when a fragment's type has a generated struct and coding functions."""
+    if not fragment.is_complex:
+        return False
+    if fragment_type in known_elements.values():
+        return True
+    # ISO 15118-20 generates a type from another namespace, e.g. xmldsig, once in
+    # the schema owning that namespace, also when this schema never references it.
+    return (is_iso20 and fragment.namespace in CONFIG_PARAMS['shared_namespace_prefixes']
+            and fragment.namespace != CONFIG_PARAMS.get('active_schema_namespace'))
+
+
 ''' generator tools '''
 
 

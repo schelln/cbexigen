@@ -478,7 +478,8 @@ class DatatypeHeader:
                         self.analyzer_data.element_fragment_grammar, fragment_type):
                     # element fragment structs are generated per schema, never shared
                     elements.append((f'{self.parameters["prefix"]}{fragment_type}', fragment.name))
-                elif fragment.is_complex and fragment_type in self.analyzer_data.known_elements.values():
+                elif tools.is_fragment_type_generated(
+                         fragment, fragment_type, self.analyzer_data.known_elements, self.__is_iso20):
                     prefixed_type = self.__get_fragment_type_name(fragment_type, fragment.namespace)
                     elements.append((prefixed_type, fragment.name))
                 else:
@@ -509,7 +510,8 @@ class DatatypeHeader:
                 if fragment.type == 'AnonType':
                     fragment_type = fragment.name
 
-                if fragment.is_complex and fragment_type in self.analyzer_data.known_elements.values():
+                if tools.is_fragment_type_generated(
+                       fragment, fragment_type, self.analyzer_data.known_elements, self.__is_iso20):
                     prefixed_type = self.__get_fragment_type_name(fragment_type, fragment.namespace)
                     elements.append((prefixed_type, fragment.name))
                 else:
@@ -864,7 +866,8 @@ class DatatypeCode:
                 if fragment.type == 'AnonType':
                     fragment_type = fragment.name
 
-                if ((fragment.is_complex and fragment_type in self.analyzer_data.known_elements.values()) or
+                if (tools.is_fragment_type_generated(
+                        fragment, fragment_type, self.analyzer_data.known_elements, self.__is_iso20) or
                         elementFragmentCoder.is_element_fragment_type(
                             self.analyzer_data.element_fragment_grammar, fragment_type)):
                     ele.append(fragment.name)
@@ -903,7 +906,8 @@ class DatatypeCode:
                 if fragment.type == 'AnonType':
                     fragment_type = fragment.name
 
-                if fragment.is_complex and fragment_type in self.analyzer_data.known_elements.values():
+                if tools.is_fragment_type_generated(
+                       fragment, fragment_type, self.analyzer_data.known_elements, self.__is_iso20):
                     ele.append(fragment.name)
                 else:
                     self.log(f'xmldsig Fragment {fragment.name} ({fragment.type}) '

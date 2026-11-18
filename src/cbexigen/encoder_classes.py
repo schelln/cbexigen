@@ -920,7 +920,8 @@ class ExiEncoderCode(ExiBaseCoderCode):
             is_element_fragment = elementFragmentCoder.is_element_fragment_type(
                 self.analyzer_data.element_fragment_grammar, fragment_type)
             if fragment.name in self.__fragments and (is_element_fragment or (
-                    fragment.is_complex and fragment_type in self.analyzer_data.known_elements.values())):
+                    tools.is_fragment_type_generated(
+                        fragment, fragment_type, self.analyzer_data.known_elements, self.__is_iso20))):
                 # element fragment coders are generated per schema, never shared
                 owner_prefix = (CONFIG_PARAMS['shared_namespace_prefixes'].get(
                     fragment.namespace, self.__schema_prefix)
@@ -961,7 +962,8 @@ class ExiEncoderCode(ExiBaseCoderCode):
                 # Every xmldsig element takes an event code, coded or not, so that
                 # the codes and their width match the decoder.
                 fragment_type = fragment.name if fragment.type == 'AnonType' else fragment.type
-                if fragment.is_complex and fragment_type in self.analyzer_data.known_elements.values():
+                if tools.is_fragment_type_generated(
+                       fragment, fragment_type, self.analyzer_data.known_elements, self.__is_iso20):
                     owner_prefix = (CONFIG_PARAMS['shared_namespace_prefixes'].get(
                         fragment.namespace, self.__schema_prefix) if self.__is_iso20 else self.__schema_prefix)
                     function = f'{CONFIG_PARAMS["encode_function_prefix"]}{owner_prefix}{fragment_type}'
