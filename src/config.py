@@ -112,9 +112,6 @@ iso20_fragments = [
     'SignedInstallationData',
     'MeteringConfirmationReq',
     'AbsolutePriceSchedule',
-    'OEMProvisioningCertificateChain',
-    'SignedMeteringData',
-    'PriceLevelSchedule',
 ]
 iso20_ac_fragments = [
     'SignedInfo',
@@ -669,8 +666,8 @@ c_files_to_generate = {
             'identifier': 'ISO20_AC_DECODER_C',
             'include_std_lib': ['stdint.h'],
             'include_other': ['exi_basetypes.h', 'exi_types_decoder.h', 'exi_basetypes_decoder.h', 'exi_error_codes.h',
-                              'exi_header.h', 'iso20_AC_Datatypes.h', 'iso20_XMLDSIG_Decoder.h',
-                              'iso20_AC_Decoder.h']
+                              'exi_header.h', 'iso20_AC_Datatypes.h', 'iso20_CommonTypes_Decoder.h',
+                              'iso20_XMLDSIG_Decoder.h', 'iso20_AC_Decoder.h']
         }
     },
     'iso20_AC_Encoder': {
@@ -729,15 +726,10 @@ c_files_to_generate = {
             'filename': 'iso20_DC_Decoder.c',
             'identifier': 'ISO20_DC_DECODER_C',
             'include_std_lib': ['stdint.h'],
-            'include_other': ['exi_basetypes.h',
-                              'exi_types_decoder.h',
-                              'exi_basetypes_decoder.h',
-                              'exi_error_codes.h',
-                              'exi_header.h',
-                              'iso20_DC_Datatypes.h',
-                              'iso20_DC_Decoder.h',
-                              'iso20_CommonTypes_Decoder.h',
-                              'iso20_XMLDSIG_Decoder.h']
+            'include_other': ['exi_basetypes.h', 'exi_types_decoder.h', 'exi_basetypes_decoder.h',
+                              'exi_error_codes.h', 'exi_header.h', 'iso20_DC_Datatypes.h',
+                              'iso20_CommonTypes_Decoder.h', 'iso20_XMLDSIG_Decoder.h',
+                              'iso20_DC_Decoder.h']
         }
     },
     'iso20_DC_Encoder': {
@@ -755,13 +747,9 @@ c_files_to_generate = {
             'filename': 'iso20_DC_Encoder.c',
             'identifier': 'ISO20_DC_ENCODER_C',
             'include_std_lib': ['stdint.h'],
-            'include_other': ['exi_basetypes.h',
-                              'exi_basetypes_encoder.h',
-                              'exi_error_codes.h', 'exi_header.h',
-                              'iso20_DC_Datatypes.h',
-                              'iso20_DC_Encoder.h',
-                              'iso20_CommonTypes_Encoder.h',
-                              'iso20_XMLDSIG_Encoder.h']
+            'include_other': ['exi_basetypes.h', 'exi_basetypes_encoder.h', 'exi_error_codes.h', 'exi_header.h',
+                              'iso20_DC_Datatypes.h', 'iso20_CommonTypes_Encoder.h',
+                              'iso20_XMLDSIG_Encoder.h', 'iso20_DC_Encoder.h']
         }
     },
     'iso20_WPT_Datatypes': {
@@ -992,7 +980,7 @@ c_files_to_generate = {
             'include_std_lib': ['stdint.h'],
             'include_other': ['exi_basetypes.h', 'exi_types_decoder.h', 'exi_basetypes_decoder.h',
                               'exi_error_codes.h', 'exi_header.h', 'iso20_AC_DER_SAE_Datatypes.h',
-                              'iso20_AC_Decoder.h', 'iso20_XMLDSIG_Decoder.h',
+                              'iso20_CommonTypes_Decoder.h', 'iso20_AC_Decoder.h', 'iso20_XMLDSIG_Decoder.h',
                               'iso20_AC_DER_SAE_Decoder.h']
         }
     },

@@ -86,8 +86,9 @@ class ExiDecoderHeader(ExiBaseCoderHeader):
 
         if self.analyzer_data is not None and self.__schema_prefix.startswith('iso20_'):
             for element in self.analyzer_data.generate_elements:
-                if element.type_definition == 'complex':
-                    self.__code_content += f'\nint decode_{element.codec_type}(exi_bitstream_t* stream, '
+                # declare what this file defines, the owner's header declares the rest
+                if element.type_definition == 'complex' and not element.is_shared_type_non_owner:
+                    self.__code_content += f'\nint decode_{element.prefixed_type}(exi_bitstream_t* stream, '
                     self.__code_content += f'struct {element.prefixed_type}* {element.type_short});'
 
         if self.__generate_fragment and not self.__is_shared_codec_header:
@@ -129,9 +130,9 @@ class ExiDecoderCode(ExiBaseCoderCode):
     def get_function_declaration(self, element: ElementData, is_forward_declaration):
         function_storage = '' if self.parameters['prefix'].startswith('iso20_') else 'static '
         content = function_storage
-        content += 'int ' + self.config['decode_function_prefix'] + element.codec_type + '('
+        content += 'int ' + self.config['decode_function_prefix'] + element.prefixed_type + '('
         content += 'exi_bitstream_t* stream, '
-        content += 'struct ' + element.prefixed_type + '* ' + element.type_short + ')'
+        content += 'struct ' + element.prefixed_type + '* ' + element.typename + ')'
 
         if is_forward_declaration:
             content += ';'
@@ -439,7 +440,7 @@ class ExiDecoderCode(ExiBaseCoderCode):
         type_array = f'{element_typename}->{detail.particle.name}.{detail.particle.value_parameter_name}'
         type_array_len = f'{element_typename}->{detail.particle.name}.{detail.particle.length_parameter_name}'
         breakout_at = self.get_array_loop_breakout(detail)
-        decode_fn = f'{CONFIG_PARAMS["decode_function_prefix"]}{detail.particle.codec_type}'
+        decode_fn = f'{CONFIG_PARAMS["decode_function_prefix"]}{detail.particle.prefixed_type}'
         next_grammar_id = detail.next_grammar
         next_grammar_id_breakout = detail.next_grammar_out
 
@@ -460,7 +461,7 @@ class ExiDecoderCode(ExiBaseCoderCode):
 
     def __get_content_decode_namespace_element(self, element_typename, particle: Particle, next_grammar, level):
         decode_comment = '// decode: namespace element'
-        decode_fn = f'{CONFIG_PARAMS["decode_function_prefix"]}{particle.codec_type}'
+        decode_fn = f'{CONFIG_PARAMS["decode_function_prefix"]}{particle.prefixed_type}'
         type_value = f'{element_typename}->{particle.name}'
         next_grammar_id = next_grammar
 
@@ -478,7 +479,7 @@ class ExiDecoderCode(ExiBaseCoderCode):
         decode_comment = '// decode: element'
         if detail.particle.is_attribute:
             decode_comment += ' (Attribute)'
-        decode_fn = f'{CONFIG_PARAMS["decode_function_prefix"]}{detail.particle.codec_type}'
+        decode_fn = f'{CONFIG_PARAMS["decode_function_prefix"]}{detail.particle.prefixed_type}'
         type_value = f'{element_typename}->{detail.particle.name}'
         next_grammar_id = detail.next_grammar
 
@@ -759,7 +760,7 @@ class ExiDecoderCode(ExiBaseCoderCode):
             function_storage = '' if self.__schema_prefix.startswith('iso20_') else 'static '
             content += temp.render(element_comment=element.element_comment,
                                    particle_comment=element.particle_comment,
-                                   function_name=CONFIG_PARAMS['decode_function_prefix'] + element.codec_type,
+                                   function_name=CONFIG_PARAMS['decode_function_prefix'] + element.prefixed_type,
                                    struct_type=element.prefixed_type, parameter_name=typename,
                                    start_grammar_id=start_grammar_id,
                                    init_function=CONFIG_PARAMS['init_function_prefix'] + element.prefixed_type,
@@ -772,9 +773,10 @@ class ExiDecoderCode(ExiBaseCoderCode):
             temp = self.generator.get_template('DecodeEmptyFunction.jinja')
             function_storage = '' if self.__schema_prefix.startswith('iso20_') else 'static '
             content += temp.render(element_comment=element.element_comment,
-                                   function_name=CONFIG_PARAMS['decode_function_prefix'] + element.codec_type,
+                                   function_name=CONFIG_PARAMS['decode_function_prefix'] + element.prefixed_type,
                                    struct_type=element.prefixed_type, parameter_name=typename,
                                    add_debug_code=self.get_status_for_add_debug_code(element.prefixed_type),
+                                   function_storage=function_storage,
                                    indent=self.indent, level=1)
             content += '\n\n'
 
@@ -796,13 +798,7 @@ class ExiDecoderCode(ExiBaseCoderCode):
             log_write_error(f'No root elements in analyzer data. Main function {fn_name} is not generated.')
         elif len(self.analyzer_data.root_elements) > 1:
             decode_fn = []
-            root_elements = (sorted(self.analyzer_data.root_elements,
-                             key=lambda elem: (elem.type_short if elem.type_definition == 'complex'
-                                               and elem.type_short == elem.name_short + 'Type'
-                                               else elem.name_short + 'Type' if elem.type_definition == 'complex'
-                                               else elem.name_short, elem.name_short))
-                             if self.__is_iso20 else self.analyzer_data.root_elements)
-            for elem in root_elements:
+            for elem in self.analyzer_data.root_elements:
                 if self.__is_iso20:
                     # TODO: The following if filters the simple types DigestValue, MgmtData and KeyName.
                     #       Simple types has to be decoded directly and not with an decoding function.
@@ -811,8 +807,11 @@ class ExiDecoderCode(ExiBaseCoderCode):
                     #       Currently an empty case with the event code is generated.
                     prefix_name_short = f'{elem.prefix}{elem.name_short}'
                     if elem.type_definition == 'complex':
+                        # Sort by this schema's prefix even for a type another schema owns, so
+                        # the event codes do not depend on which schema generates the type.
+                        sort_name = CONFIG_PARAMS['decode_function_prefix'] + elem.prefix + elem.typename
                         decode_fn.append([CONFIG_PARAMS['decode_function_prefix'] + elem.prefixed_type,
-                                          parameter_name + '->' + elem.name_short])
+                                          parameter_name + '->' + elem.name_short, sort_name])
                     else:
                         decode_fn.append([f'{CONFIG_PARAMS["decode_function_prefix"]}{prefix_name_short}', ''])
                 else:
@@ -823,8 +822,8 @@ class ExiDecoderCode(ExiBaseCoderCode):
                         decode_fn.append([CONFIG_PARAMS['decode_function_prefix'] + elem.prefixed_type,
                                           parameter_name + '->' + elem.typename])
 
-            if not self.__is_iso20:
-                decode_fn.sort()
+            decode_fn.sort(key=lambda item: (item[2] if len(item) > 2 else item[0], item[1]))
+            decode_fn = [item[:2] for item in decode_fn]
 
             bits = tools.get_bits_to_decode(len(self.analyzer_data.root_elements))
 

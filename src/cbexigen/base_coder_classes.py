@@ -150,9 +150,7 @@ class ExiBaseCoderCode:
         self.elements_generated = []
         self.elements_to_generate = []
         for element in self.analyzer_data.generate_elements:
-            is_owner = (element.contextual_type_name is not None
-                        or not element.is_shared_type_non_owner)
-            if element.type_definition == 'complex' and is_owner:
+            if element.type_definition == 'complex' and not element.is_shared_type_non_owner:
                 self.elements_to_generate.append(element)
 
     def init_list_with_known_type_names(self):
@@ -541,8 +539,10 @@ class ExiBaseCoderCode:
             if particle_index + choice_options.number_of_particles_to_skip > index_last_nonoptional_particle:
                 # all the following particles are optional, so END needs to be an expected event
                 # at the beginning of the event/grammar detail list
-                if not any(detail.flag == GrammarFlag.END for detail in grammar.details):
-                    if not particle_is_part_of_sequence or str(particle.parent_sequence[0]) == particle.name:
+                if not particle_is_part_of_sequence:
+                    grammar.details.append(ElementGrammarDetail(flag=GrammarFlag.END))
+                else:
+                    if str(particle.parent_sequence[0]) == particle.name:
                         grammar.details.append(ElementGrammarDetail(flag=GrammarFlag.END))
 
             def _add_particle_or_choice_list_to_details(
@@ -660,10 +660,6 @@ class ExiBaseCoderCode:
                             _add_particle_or_choice_list_to_details(element, grammar, part, previous_choice_list,
                                                                     flag=flag, is_in_array_last=True,
                                                                     is_extra_grammar=add_extra)
-                        if m == 1 and part.min_occurs == 0 and n < len(element.particles) - 1:
-                            _add_subsequent_grammar_details(element, element.particles[n + 1], n + 1,
-                                                            index_last_nonoptional_particle,
-                                                            particle_is_part_of_sequence, is_recursion=True)
                         if m > part.min_occurs and m > 1:
                             # this is an optional occurrence (and grammar 0 already contains END),
                             # so recurse with the subsequent particles

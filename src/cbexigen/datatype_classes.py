@@ -27,12 +27,10 @@ class DatatypeHeader:
         self.logging_enabled = enable_logging
         self.logger_name = ''
         self.scheme = current_scheme
-        self.config['active_schema_namespace'] = current_scheme.target_namespace
         self.__is_shared_datatype_header = self.h_params['filename'] in {
             'iso20_XMLDSIG_Datatypes.h',
             'iso20_CommonTypes_Datatypes.h',
         }
-        self.analyzer_data.known_prototypes.clear()
 
         self.__schema_prefix = self.parameters['prefix']
         self.__is_iso20 = self.__schema_prefix.startswith('iso20_')
@@ -144,13 +142,14 @@ class DatatypeHeader:
 
         comment = '// enum for function numbers'
         enum_type = self.parameters['prefix'] + 'generatedFunctionNumbersType'
-        items = set()
+        items = []
         for value in self.scheme.maps.elements.values():
             if value.default_namespace:
-                items.add(self.parameters['prefix'] + value.local_name)
+                items.append(self.parameters['prefix'] + value.local_name)
+        items.sort()
 
         temp = self.generator.get_template('BaseEnum.jinja')
-        return temp.render(list=sorted(items), element_comment=comment, enum_type=enum_type)  # nosemgrep: direct-use-of-jinja2
+        return temp.render(list=items, element_comment=comment, enum_type=enum_type)
 
     def __generate_enum_array_struct(self, particle):
         # generate struct for array with length variable
@@ -234,7 +233,7 @@ class DatatypeHeader:
         comment = self.__get_particle_comment(particle)
         type_str = ''
 
-        if particle.integer_base_type is not None and not is_in_types:
+        if particle.integer_base_type is not None:
             if particle.integer_base_type in tools.TYPE_TRANSLATION_C:
                 type_str = tools.TYPE_TRANSLATION_C[particle.integer_base_type]
             else:
@@ -258,7 +257,7 @@ class DatatypeHeader:
         comment = self.__get_particle_comment(particle)
         type_str = ''
 
-        if particle.integer_base_type is not None and not is_in_types:
+        if particle.integer_base_type is not None:
             if particle.integer_base_type in tools.TYPE_TRANSLATION_C:
                 type_str = tools.TYPE_TRANSLATION_C[particle.integer_base_type]
             else:
@@ -292,24 +291,12 @@ class DatatypeHeader:
             prefix = owner_prefix
         return prefix + fragment_type
 
-    def __is_generated_fragment_struct(self, fragment_type, namespace):
-        return any(
-            element.type_definition == 'complex'
-            and element.type_short == fragment_type
-            and tools.extract_namespace_uri(element.type) == namespace
-            and not element.is_shared_type_non_owner
-            for element in self.analyzer_data.generate_elements
-        )
-
     def __get_particle_content(self, particle: Particle, elements, indent_level=1):
         content = ''
         last = None
 
         # particle type is in list, so a separate type is generated
-        is_xml_schema_builtin = particle.type and particle.type.startswith(
-            '{http://www.w3.org/2001/XMLSchema}')
-
-        if particle.type in self.analyzer_data.known_elements and not is_xml_schema_builtin:
+        if particle.type in self.analyzer_data.known_elements:
             if particle.max_occurs > 1:
                 # generate struct for array with length variable
                 if particle.is_enum:
@@ -483,7 +470,8 @@ class DatatypeHeader:
                     prefixed_type = self.__get_fragment_type_name(fragment_type, fragment.namespace)
                     elements.append((prefixed_type, fragment.name))
                 else:
-                    log_write_error(f'Fragment {fragment.name} ({fragment.type}) is not in the list of known elements.')
+                    log_write_error(f'Fragment {fragment.name} ({fragment.type}) '
+                                    f'is not in the list of known elements.')
 
         temp = self.generator.get_template('BaseStructWithUnionAndUsed.jinja')
         content = temp.render(struct_name=name,
@@ -515,7 +503,8 @@ class DatatypeHeader:
                     prefixed_type = self.__get_fragment_type_name(fragment_type, fragment.namespace)
                     elements.append((prefixed_type, fragment.name))
                 else:
-                    self.log(f'xmldsig Fragment {fragment.name} ({fragment.type}) is not in the list of known elements.')
+                    self.log(f'xmldsig Fragment {fragment.name} ({fragment.type}) '
+                             f'is not in the list of known elements.')
 
         temp = self.generator.get_template('BaseStructWithUnionAndUsed.jinja')
         content = temp.render(struct_name=name,
@@ -640,8 +629,7 @@ class DatatypeHeader:
 
             skip_element = False
             for particle in element.particles:
-                if (particle.type in self.analyzer_data.known_elements
-                        and not particle.is_shared_type_non_owner):
+                if particle.is_complex and not particle.is_shared_type_non_owner:
                     if particle.typename_simple not in self.__generated_t:
                         # skip here! generate type first before we can use it
                         skip_element = True
@@ -756,15 +744,6 @@ class DatatypeCode:
     # ---------------------------------------------------------------------------
     # generator helper functions
     # ---------------------------------------------------------------------------
-    def __is_generated_fragment_struct(self, fragment_type, namespace):
-        return any(
-            element.type_definition == 'complex'
-            and element.type_short == fragment_type
-            and tools.extract_namespace_uri(element.type) == namespace
-            and not element.is_shared_type_non_owner
-            for element in self.analyzer_data.generate_elements
-        )
-
     @staticmethod
     def __get_type_member_array(particle: Particle):
         result = particle.name + '.arrayLen'

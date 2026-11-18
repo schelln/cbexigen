@@ -22,8 +22,7 @@ CONFIG_ARGS: Dict[str, Union[str, Path]] = {
 }
 
 CONFIG_PARAMS: Dict[str, Union[str, int]] = {
-    # Qualified schema types emitted by a shared schema prefix.
-    'shared_type_prefixes': {},
+    # ISO 15118-20: namespace -> prefix of the schema generating its shared types
     'shared_namespace_prefixes': {},
     # add debug code while generating code
     'add_debug_code': 0,
@@ -112,8 +111,6 @@ def process_config_parameters():
         with the values from config file
     """
     config_module = get_config_module()
-
-    CONFIG_PARAMS['shared_type_prefixes'] = {}
 
     ''' debug code definitions '''
     # add_debug_code

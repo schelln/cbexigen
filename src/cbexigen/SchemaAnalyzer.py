@@ -2,7 +2,6 @@
 # Copyright (c) 2022 - 2023 chargebyte GmbH
 # Copyright (c) 2022 - 2023 Contributors to EVerest
 from typing import Union
-from pathlib import Path
 
 from xmlschema import XMLResource, XMLSchema11, XsdElement, XsdType, XsdAttribute
 from xmlschema.validators import (XsdSimpleType, XsdComplexType, XsdGroup, XsdAnyElement, Xsd11AnyElement,
@@ -329,14 +328,6 @@ class SchemaAnalyzer(object):
 
         return result
 
-    def __append_root_element(self, element_data, element):
-        for index, existing in enumerate(self.__root_elements):
-            if existing.name_short == element_data.name_short:
-                if element.schema.url == self.__current_schema.url:
-                    self.__root_elements[index] = element_data
-                return
-        self.__root_elements.append(element_data)
-
     def __add_to_max_occurs(self, name, occurrence):
         result = False
 
@@ -661,23 +652,18 @@ class SchemaAnalyzer(object):
                                              child.effective_max_occurs))
                 continue
 
-            if self.__is_abstract(child) or self.__is_abstract_type(child):
+            if self.__is_abstract(child):
+                # get substituted particles for child
                 qname = self.__get_name(child)
-                if self.__is_abstract(child):
-                    subst_group = self.__current_schema.maps.substitution_groups.get(qname)
-                    if subst_group:
-                        for elem in self.__sorted_xsd_elements(subst_group):
-                            particle = self.__get_abstract_particle(child, elem)
-                            particles.append(particle)
-                            subst_list.append(elem)
-                            self.__known_particles[particle.name] = particle
-                    else:
-                        msg_write("No Substitute group (child) found for " + qname)
+                subst_group = self.__current_schema.maps.substitution_groups.get(qname)
+                if subst_group:
+                    for elem in self.__sorted_xsd_elements(subst_group):
+                        particle = self.__get_abstract_particle(child, elem)
+                        particles.append(particle)
+                        subst_list.append(elem)
+                        self.__known_particles[particle.name] = particle
                 else:
-                    particle = self.__get_particle(child)
-                    self.__test_for_parent_sequence(particle, child)
-                    self.__test_for_parent_simple_content(particle, child)
-                    particles.append(particle)
+                    msg_write("No Substitute group (child) found for " + qname)
             else:
                 particle = self.__get_particle(child)
                 self.__test_for_parent_sequence(particle, child)
@@ -1039,23 +1025,13 @@ class SchemaAnalyzer(object):
                 and element.type is not None
                 and element.type.qualified_name
             }
-            is_dedicated_owner = Path(self.__schema_file.name).name in {
-                'V2G_CI_CommonTypes.xsd',
-                'xmldsig-core-schema.xsd',
-            }
             for schema_type in self.__current_schema.types.values():
                 if schema_type.target_namespace != self.__current_schema.target_namespace:
                     continue
                 if schema_type.qualified_name in global_element_types:
                     continue
-                if is_dedicated_owner:
-                    self.__generate_elements[:] = [
-                        item for item in self.__generate_elements
-                        if item.type != schema_type.qualified_name
-                    ]
-                if any(item.type == schema_type.qualified_name
-                       and item.prefix == self.__schema_prefix
-                       for item in self.__generate_elements):
+                # an abstract type is only ever coded through the types derived from it
+                if getattr(schema_type, 'abstract', False):
                     continue
                 type_name = f'{type_prefix}:{schema_type.local_name}' if type_prefix else schema_type.local_name
                 element_xml = (f'<xs:element xmlns:xs="http://www.w3.org/2001/XMLSchema" '
@@ -1082,10 +1058,10 @@ class SchemaAnalyzer(object):
                     tools.generate_analysis_tree(self.__current_schema, element_data.name_short, self.__schema_prefix)
 
                 if element_data.typename in self.__schema_builtin_types:
-                    self.__append_root_element(element_data, element)
+                    self.__root_elements.append(element_data)
                     continue
                 if element_data.content_type == 'simple' and len(element_data.particles) == 0:
-                    self.__append_root_element(element_data, element)
+                    self.__root_elements.append(element_data)
                     continue
 
                 if (element.schema.url == self.__current_schema.url
@@ -1099,7 +1075,7 @@ class SchemaAnalyzer(object):
                     self.__known_elements[element_data.type] = element_data.type_short
                     self.__generate_elements.append(element_data)
 
-                self.__append_root_element(element_data, element)
+                self.__root_elements.append(element_data)
 
                 self.__get_child_tree(element, level)
                 count += 1
